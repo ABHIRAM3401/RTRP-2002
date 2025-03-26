@@ -1,11 +1,10 @@
 import os
+from PIL import Image
 
-# Define paths
-dataset_path = "path/to/uec_food_256"  # Change this to your dataset path
-output_labels_path = "path/to/uec_food_256/labels"  # Where YOLO labels will be saved
-
-# Create labels directory if it doesn't exist
-os.makedirs(output_labels_path, exist_ok=True)
+# Define dataset path
+dataset_path = "/kaggle/input/uecfood256/UECFOOD256"  # Kaggle dataset path
+labels_root = "/kaggle/working/labels"  # Save labels in Kaggle working directory
+os.makedirs(labels_root, exist_ok=True)  # Create labels root if not exists
 
 # Function to convert bounding box to YOLO format
 def convert_to_yolo(x1, y1, x2, y2, img_width, img_height):
@@ -15,16 +14,20 @@ def convert_to_yolo(x1, y1, x2, y2, img_width, img_height):
     height = (y2 - y1) / img_height
     return center_x, center_y, width, height
 
-# Loop through each category folder
-for category_id in range(1, 257):  # Assuming 256 categories (1 to 256)
+# Loop through each category folder (1 to 256)
+for category_id in range(1, 257):  
     category_folder = os.path.join(dataset_path, str(category_id))
     bb_file = os.path.join(category_folder, "bb_info.txt")
 
     if not os.path.exists(bb_file):
-        continue  # Skip if no bounding box file found
+        continue  # Skip if no bounding box file
+
+    # Create a subfolder in 'labels/' for this food category
+    category_labels_folder = os.path.join(labels_root, str(category_id))
+    os.makedirs(category_labels_folder, exist_ok=True)
 
     with open(bb_file, "r") as file:
-        lines = file.readlines()
+        lines = file.readlines()[1:]  # ✅ Skip header line
 
     for line in lines:
         data = line.strip().split()
@@ -39,16 +42,15 @@ for category_id in range(1, 257):  # Assuming 256 categories (1 to 256)
             continue  # Skip if image not found
 
         # Get image dimensions
-        from PIL import Image
         img = Image.open(img_file)
         img_width, img_height = img.size
 
         # Convert to YOLO format
         center_x, center_y, width, height = convert_to_yolo(x1, y1, x2, y2, img_width, img_height)
 
-        # Save YOLO label file
-        yolo_label_path = os.path.join(output_labels_path, f"{img_name}.txt")
+        # Save YOLO label file in the corresponding category subfolder
+        yolo_label_path = os.path.join(category_labels_folder, f"{img_name}.txt")
         with open(yolo_label_path, "w") as yolo_file:
             yolo_file.write(f"{category_id-1} {center_x:.6f} {center_y:.6f} {width:.6f} {height:.6f}\n")
 
-print("Conversion completed! YOLO labels saved in:", output_labels_path)
+print("✅ Conversion completed! YOLO labels are saved in /kaggle/working/labels")
