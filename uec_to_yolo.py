@@ -1,7 +1,6 @@
-# https://chatgpt.com/c/67e12f14-51f4-8003-9836-ef0a9647b125
-
 import os
 import shutil
+from PIL import Image
 
 # Define dataset paths
 dataset_path = "/kaggle/input/uecfood256/UECFOOD256"
@@ -38,14 +37,12 @@ for category_id in category_mapping.keys():
     category_folder = os.path.join(dataset_path, str(category_id))
     
     if not os.path.exists(category_folder):
-        print(f"⚠️ Skipping missing folder: {category_folder}")
         continue
 
     # Path to the bounding box file
     bb_file = os.path.join(category_folder, "bb_info.txt")
     
     if not os.path.exists(bb_file):
-        print(f"⚠️ No bounding box file found in {category_folder}, skipping...")
         continue
 
     with open(bb_file, "r", encoding="utf-8") as file:
@@ -55,14 +52,12 @@ for category_id in category_mapping.keys():
         data = line.strip().split()
 
         if len(data) != 5:
-            print(f"⚠️ Skipping invalid line in {bb_file}: {line}")
             continue
 
         img_name, x1, y1, x2, y2 = data
         try:
             x1, y1, x2, y2 = map(int, [x1, y1, x2, y2])
         except ValueError:
-            print(f"⚠️ Skipping invalid bbox values in {bb_file}: {line}")
             continue
 
         # New standardized image name (categoryID_imageID.jpg)
@@ -72,14 +67,16 @@ for category_id in category_mapping.keys():
 
         # Skip if image does not exist
         if not os.path.exists(old_img_path):
-            print(f"⚠️ Image not found: {old_img_path}, skipping...")
             continue
+
+        # Get actual image size
+        with Image.open(old_img_path) as img:
+            image_width, image_height = img.size  # Dynamically get image size
 
         # Copy and rename image to output folder
         shutil.copy(old_img_path, new_img_path)
 
         # Compute YOLO format bounding box
-        image_width, image_height = 640, 480  # Placeholder, replace with actual image size
         bbox_width = x2 - x1
         bbox_height = y2 - y1
         x_center = x1 + bbox_width / 2
@@ -91,9 +88,15 @@ for category_id in category_mapping.keys():
         bbox_width /= image_width
         bbox_height /= image_height
 
+        # Ensure values are within [0,1] to prevent out-of-bounds errors
+        x_center = min(max(x_center, 0), 1)
+        y_center = min(max(y_center, 0), 1)
+        bbox_width = min(max(bbox_width, 0), 1)
+        bbox_height = min(max(bbox_height, 0), 1)
+
         # Create YOLO label file
         label_file = os.path.join(labels_dir, f"{img_name}_{category_id}.txt")
         with open(label_file, "w") as f:
             f.write(f"{category_id-1} {x_center} {y_center} {bbox_width} {bbox_height}\n")  # YOLO class index starts from 0
 
-print("✅ YOLO Dataset Preparation Completed!")
+print("✅ YOLO Dataset Preparation Completed Successfully! 🚀")
