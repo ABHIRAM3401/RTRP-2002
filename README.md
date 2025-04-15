@@ -9,3 +9,6 @@ commit 4:
     the code is changed because the image height and width are completely different for each image , so the hardcoded values 640 , 480 should be changed , to implement that we have used img.size and took each image width and height seperately
 commit 5:
     added new file , jupyter source file from kaggle which is finetuned from the yolo model 
+    commit 5.1:
+        changed a cell
+        the cell which prints the image of the food item to verify the bounding boxes after changing them into yolo format from uec 
